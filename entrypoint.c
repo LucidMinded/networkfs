@@ -146,6 +146,10 @@ int networkfs_get_tree(struct fs_context *fc) {
 struct dentry *networkfs_lookup(struct inode *parent, struct dentry *child,
                                 unsigned int flag) {
   const char *name = child->d_name.name;
+  if (child->d_name.len > 255) {
+    printk(KERN_ERR "networkfs lookup: name length is greater than 255");
+    return NULL;
+  }
   char ino_as_string[22];
   sprintf(ino_as_string, "%lu", parent->i_ino);
 
@@ -180,7 +184,7 @@ struct dentry *networkfs_lookup(struct inode *parent, struct dentry *child,
   return NULL;
 }
 
-int networkfs_list(struct inode *inode, struct entries **entries) {
+int networkfs_helper_get_list(struct inode *inode, struct entries **entries) {
   size_t response_buffer_size = sizeof(struct entries);
   char *response_buffer = kmalloc(response_buffer_size, GFP_KERNEL);
   if (!response_buffer) {
@@ -211,7 +215,7 @@ int networkfs_iterate(struct file *filp, struct dir_context *ctx) {
   struct inode *inode = dentry->d_inode;
 
   struct entries *my_entries_struct = NULL;
-  networkfs_list(inode, &my_entries_struct);
+  networkfs_helper_get_list(inode, &my_entries_struct);
 
   printk(KERN_DEBUG "networkfs iterate: before loop ctx->pos %lld\n", ctx->pos);
 
@@ -232,9 +236,14 @@ int networkfs_iterate(struct file *filp, struct dir_context *ctx) {
   return record_counter;
 }
 
-int networkfs_remove_file_or_dir(struct inode *parent, struct dentry *child,
-                                 char *method) {
+int networkfs_helper_remove_file_or_dir(struct inode *parent,
+                                        struct dentry *child, char *method) {
   const char *name = child->d_name.name;
+  if (child->d_name.len > 255) {
+    printk(KERN_ERR
+           "networkfs remove_file_or_dir: name length is greater than 255");
+    return -1;
+  }
 
   char ino_as_string[22];
   sprintf(ino_as_string, "%lu", parent->i_ino);
@@ -253,28 +262,22 @@ int networkfs_remove_file_or_dir(struct inode *parent, struct dentry *child,
 }
 
 int networkfs_unlink(struct inode *parent, struct dentry *child) {
-  return networkfs_remove_file_or_dir(parent, child, "unlink");
-}
-
-int networkfs_check_empty(struct inode *inode) {
-  struct entries *my_entries_struct = NULL;
-  networkfs_list(inode, &my_entries_struct);
-  size_t entries_count = my_entries_struct->entries_count;
-  kfree(my_entries_struct);
-  return entries_count == 0;
+  return networkfs_helper_remove_file_or_dir(parent, child, "unlink");
 }
 
 int networkfs_rmdir(struct inode *parent, struct dentry *child) {
-  //   if (!networkfs_check_empty(child->d_inode)) {
-  //     return -ENOTEMPTY;
-  //   }
-  return networkfs_remove_file_or_dir(parent, child, "rmdir");
+  return networkfs_helper_remove_file_or_dir(parent, child, "rmdir");
 }
 
-int networkfs_create_file_or_dir(struct user_namespace *user_ns,
-                                 struct inode *parent, struct dentry *child,
-                                 char *type) {
+int networkfs_helper_create_file_or_dir(struct user_namespace *user_ns,
+                                        struct inode *parent,
+                                        struct dentry *child, char *type) {
   const char *name = child->d_name.name;
+  if (child->d_name.len > 255) {
+    printk(KERN_ERR
+           "networkfs create_file_or_dir: name length is greater than 255");
+    return -1;
+  }
   char ino_as_string[22];
   sprintf(ino_as_string, "%lu", parent->i_ino);
 
@@ -309,12 +312,13 @@ int networkfs_create_file_or_dir(struct user_namespace *user_ns,
 
 int networkfs_create(struct user_namespace *user_ns, struct inode *parent,
                      struct dentry *child, umode_t mode, bool b) {
-  return networkfs_create_file_or_dir(user_ns, parent, child, "file");
+  return networkfs_helper_create_file_or_dir(user_ns, parent, child, "file");
 }
 
 int networkfs_mkdir(struct user_namespace *user_ns, struct inode *parent,
                     struct dentry *child, umode_t mode) {
-  return networkfs_create_file_or_dir(user_ns, parent, child, "directory");
+  return networkfs_helper_create_file_or_dir(user_ns, parent, child,
+                                             "directory");
 }
 
 module_init(networkfs_init);
