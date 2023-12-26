@@ -7,7 +7,7 @@
 #include "http.h"
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Ivanov Ivan");
+MODULE_AUTHOR("Ratnikov Ilya");
 MODULE_VERSION("0.01");
 
 struct inode *networkfs_get_inode(struct super_block *sb,
@@ -77,7 +77,6 @@ void networkfs_exit(void) {
 
 int networkfs_init_fs_context(struct fs_context *fc) {
   fc->ops = &networkfs_context_ops;
-  printk(KERN_INFO "networkfs_init_fs_context\n");  // debug
   return 0;
 }
 
@@ -217,20 +216,16 @@ int networkfs_iterate(struct file *filp, struct dir_context *ctx) {
   struct entries *my_entries_struct = NULL;
   networkfs_helper_get_list(inode, &my_entries_struct);
 
-  printk(KERN_DEBUG "networkfs iterate: before loop ctx->pos %lld\n", ctx->pos);
-
   loff_t record_counter = 0;
 
   for (; ctx->pos < my_entries_struct->entries_count;
        ++ctx->pos, ++record_counter) {
     char *entry_name = my_entries_struct->entries[ctx->pos].name;
-    printk(KERN_DEBUG "networkfs iterate: entry name = %s\n", entry_name);
 
     dir_emit(ctx, entry_name, strlen(entry_name),
              my_entries_struct->entries[ctx->pos].ino,
              my_entries_struct->entries[ctx->pos].entry_type);
   }
-  printk(KERN_DEBUG "networkfs iterate: record counter %lld\n", record_counter);
 
   kfree(my_entries_struct);
   return record_counter;
