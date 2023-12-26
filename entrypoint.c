@@ -218,13 +218,15 @@ int networkfs_iterate(struct file *filp, struct dir_context *ctx) {
 
   loff_t record_counter = 0;
 
-  for (; ctx->pos < my_entries_struct->entries_count;
-       ++ctx->pos, ++record_counter) {
-    char *entry_name = my_entries_struct->entries[ctx->pos].name;
+  dir_emit_dots(filp, ctx);
+  for (loff_t entries_pos = ctx->pos - 2;
+       entries_pos < my_entries_struct->entries_count;
+       ++entries_pos, ++ctx->pos, ++record_counter) {
+    char *entry_name = my_entries_struct->entries[entries_pos].name;
 
     dir_emit(ctx, entry_name, strlen(entry_name),
-             my_entries_struct->entries[ctx->pos].ino,
-             my_entries_struct->entries[ctx->pos].entry_type);
+             my_entries_struct->entries[entries_pos].ino,
+             my_entries_struct->entries[entries_pos].entry_type);
   }
 
   kfree(my_entries_struct);
