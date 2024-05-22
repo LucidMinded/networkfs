@@ -684,4 +684,5 @@ $ sudo ctest --preset link --output-on-failure
 - https://github.com/Rust-for-Linux/rust-out-of-tree-module
 
 [^1]: Существует альтернативный путь — определить метод `mount` в `file_system_type`, который должен возвращать корневую директорию файловой системы, однако он считается устаревшим.
+
 </details>
